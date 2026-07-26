@@ -138,6 +138,8 @@ AI/Claude  →  POST /toy-cmd  →  Relay Server  →  GET /toy-next  →  BLE B
 | `raw` | `{"raw": "5504000001FFAA"}` | Raw hex command |
 | `sec` | `{"speed": 0.8, "sec": 30}` | Auto-stop after N seconds (optional, for any command) |
 
+> **提示（中文）：** `sec` 是可选参数，加在任何命令里，表示 N 秒后自动停止。不加则一直运行，直到 AI 主动发 `{"stop": true}`。例：震动 30 秒后自动停 → `{"speed": 0.7, "sec": 30}`
+
 ## Setup
 
 ### 1. Relay Server
