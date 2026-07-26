@@ -136,6 +136,7 @@ AI/Claude  →  POST /toy-cmd  →  Relay Server  →  GET /toy-next  →  BLE B
 | `heat` | `{"heat": true}` | Heating on/off |
 | `stop` | `{"stop": true}` | Stop all |
 | `raw` | `{"raw": "5504000001FFAA"}` | Raw hex command |
+| `sec` | `{"speed": 0.8, "sec": 30}` | Auto-stop after N seconds (optional, for any command) |
 
 ## Setup
 
