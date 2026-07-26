@@ -15,11 +15,13 @@ h2{color:#e94560}
 <div id="status" style="margin:12px 0;font-size:14px" class="info">Not connected</div>
 <div id="log"></div>
 <script>
-const RELAY=location.origin; // Change to your relay server URL
+const RELAY=location.origin;
 const SVC='0000ffe0-0000-1000-8000-00805f9b34fb';
 const WRITE='0000ffe1-0000-1000-8000-00805f9b34fb';
 const KEEPALIVE=1500;
+const MAX_RECONNECT=5;
 let writeChar=null,currentCmd=null,currentUntil=0,pollTimer=null,kaTimer=null;
+let bleDevice=null,reconnectCount=0;
 
 function log(msg,cls='info'){
   const d=document.getElementById('log');
@@ -30,20 +32,39 @@ function log(msg,cls='info'){
 async function connectBLE(){
   try{
     log('Scanning...');
-    const dev=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'SL278'}],optionalServices:[SVC]});
-    log('Connecting '+dev.name+'...');
-    const srv=await dev.gatt.connect();
-    const svc=await srv.getPrimaryService(SVC);
-    writeChar=await svc.getCharacteristic(WRITE);
-    log('Connected!','ok');
-    document.getElementById('status').textContent='Connected';
-    document.getElementById('status').className='ok';
-    document.getElementById('connectBtn').disabled=true;
-    document.getElementById('stopBtn').disabled=false;
-    document.getElementById('heatBtn').disabled=false;
-    startPolling();
-    startKeepalive();
+    bleDevice=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'SL278'}],optionalServices:[SVC]});
+    bleDevice.addEventListener('gattserverdisconnected',onDisconnected);
+    await doConnect();
+    reconnectCount=0;
   }catch(e){log('Error: '+e,'err');}
+}
+
+async function doConnect(){
+  log('Connecting '+bleDevice.name+'...');
+  const srv=await bleDevice.gatt.connect();
+  const svc=await srv.getPrimaryService(SVC);
+  writeChar=await svc.getCharacteristic(WRITE);
+  log('Connected!','ok');
+  document.getElementById('status').textContent='Connected';
+  document.getElementById('status').className='ok';
+  document.getElementById('connectBtn').disabled=true;
+  document.getElementById('stopBtn').disabled=false;
+  document.getElementById('heatBtn').disabled=false;
+  startPolling();
+  startKeepalive();
+}
+
+async function onDisconnected(){
+  writeChar=null;
+  if(reconnectCount>=MAX_RECONNECT){log('重连失败次数已达上限','err');return;}
+  reconnectCount++;
+  const delay=reconnectCount*2000;
+  log(`断连，${delay/1000}s后第${reconnectCount}次重连...`,'info');
+  document.getElementById('status').textContent=`Reconnecting (${reconnectCount}/${MAX_RECONNECT})...`;
+  document.getElementById('status').className='info';
+  await new Promise(r=>setTimeout(r,delay));
+  try{await doConnect();log('重连成功','ok');reconnectCount=0;}
+  catch(e){log('重连失败: '+e,'err');onDisconnected();}
 }
 
 function buildScale(v){return new Uint8Array([0x55,0x04,0,0,1,Math.max(0,Math.min(255,v)),0xAA]);}
