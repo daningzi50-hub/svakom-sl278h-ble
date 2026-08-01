@@ -9,6 +9,13 @@ Reverse-engineered BLE protocol for the **Svakom SL278H** vibrator/clapper, incl
 > three silent-failure traps that make commands *look* successful while the device stays still.
 > 云端远程控制方案（中文文档）：无需蓝牙桥，任意距离可用。
 
+> **Brand-agnostic how-to → [`TUTORIAL.md`](TUTORIAL.md)**
+> A generic guide (in Chinese) for wiring *any* remote-capable toy up to an AI assistant:
+> which of the three integration routes to pick, how to sniff the protocol instead of
+> guessing it, the four silent-failure traps common to this class of device, and how to
+> hand over control in a way that's actually safe. Written to be handed to the AI, not the human.
+> 通用版部署教程：把任意一台带远程功能的玩具接给你的 AI，不绑品牌、不绑模型。
+
 ## Device Info
 
 | Field | Value |
