@@ -2,6 +2,13 @@
 
 Reverse-engineered BLE protocol for the **Svakom SL278H** vibrator/clapper, including vibration, patterns, clapping (pat), and **heating** commands — features not documented elsewhere.
 
+> **Also available: cloud control without a BLE bridge → [`cloud-relay/`](cloud-relay/)**
+> Drives the toy through the official App's remote room over WebSocket, so no computer
+> needs to be near the device and no browser page has to stay open. Documented in Chinese,
+> including the cloud command format (`85-{func}-{heat}-{temp}-{mode}-{strength}-0`) and
+> three silent-failure traps that make commands *look* successful while the device stays still.
+> 云端远程控制方案（中文文档）：无需蓝牙桥，任意距离可用。
+
 ## Device Info
 
 | Field | Value |
