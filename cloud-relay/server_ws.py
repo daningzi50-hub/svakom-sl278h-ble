@@ -204,6 +204,21 @@ async def _keepalive_loop():
             with state_lock:
                 state["connected"] = False
                 state["last_error"] = f"keepalive: {type(e).__name__}: {e}"
+            # 保活断了必须自己爬回去。以前到这儿就躺平了：BrokenPipeError 之后
+            # 房间早把我们踢了，这个循环却还在每 20 秒往一根断掉的管子里喊，
+            # 状态永远停在掉线，直到有人手动重新加入——外面说的「用着用着就没反应」
+            # 多半就是这一半没做。
+            for attempt in range(3):
+                try:
+                    await asyncio.sleep(2 ** attempt)
+                    await ws_join_room(room_id=rid)
+                    print(f"keepalive: 断线后自动重连成功 room={rid}")
+                    break
+                except Exception as e2:
+                    with state_lock:
+                        state["last_error"] = (
+                            f"reconnect#{attempt + 1}: {type(e2).__name__}: {e2}"
+                        )
 
 
 def _start_keepalive():
