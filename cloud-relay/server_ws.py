@@ -236,6 +236,34 @@ async def _send_content(room_id, content):
     })
 
 
+# 加热安全阀：设备加热档位是 55°C，一旦开启就持续保持，不随动作指令复位。
+# 体内黏膜痛觉分布稀疏，等使用者主动喊烫时，接触时长往往已经偏长——
+# 因此自动断电必须做在服务端，不能依赖调用方记得补一条关闭指令。
+# 开热后 HEAT_AUTO_OFF_SEC 秒强制关闭；期间重复开热会重新计时。
+HEAT_AUTO_OFF_SEC = 30
+_heat_timers = {}
+
+
+async def _heat_auto_off(device, delay):
+    try:
+        await asyncio.sleep(delay)
+    except asyncio.CancelledError:
+        return
+    key = "heat_pat" if device == "pat" else "heat"
+    if not state.get(key):
+        return
+    room_id = state.get("room_id")
+    if not room_id:
+        return
+    try:
+        await _send_content(room_id, build_heat_cmd(False, device))
+        with state_lock:
+            state[key] = False
+        print(f"[heat] auto-off after {delay}s ({device})", flush=True)
+    except Exception as exc:
+        print(f"[heat] auto-off failed: {exc!r}", flush=True)
+
+
 async def ws_heat(on, device="main"):
     """加热单独成路。温度开关必须是明确的一条指令，不允许被动作指令顺带打开或关闭。"""
     room_id = state.get("room_id")
@@ -246,6 +274,14 @@ async def ws_heat(on, device="main"):
     with state_lock:
         state["heat_pat" if device == "pat" else "heat"] = bool(on)
         state["last_cmd_time"] = time.time()
+
+    # 重复开热重新计时；关热则撤掉待命的定时器
+    old = _heat_timers.pop(device, None)
+    if old and not old.done():
+        old.cancel()
+    if on:
+        _heat_timers[device] = asyncio.create_task(
+            _heat_auto_off(device, HEAT_AUTO_OFF_SEC))
     return content
 
 
@@ -464,7 +500,8 @@ class H(BaseHTTPRequestHandler):
                 device = body.get("device", "main")
                 sent = run_async(ws_heat(on, device))
                 self._json(200, {"ok": True, "sent": sent,
-                                 "heat": state["heat"], "heat_pat": state["heat_pat"]})
+                                 "heat": state["heat"], "heat_pat": state["heat_pat"],
+                                 "auto_off_sec": HEAT_AUTO_OFF_SEC if on else None})
 
             elif self.path == "/toy-disconnect":
                 run_async(ws_disconnect())
